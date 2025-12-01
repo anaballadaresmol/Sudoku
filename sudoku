@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sudoku - Star Wars Edition</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0f0f1e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #ffd700;
+            overflow-x: hidden;
+        }
+        
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+        
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 600px;
+            width: 95%;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 3px solid #ffd700;
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+        
+        .title {
+            text-align: center;
+            font-size: 2.5em;
+            font-weight: 900;
+            text-shadow: 0 0 20px #ffd700;
+            margin-bottom: 30px;
+            letter-spacing: 3px;
+        }
+        
+        .setup-screen, .game-screen, .breach-screen {
+            display: none;
+        }
+        
+        .setup-screen.active, .game-screen.active, .breach-screen.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 2px solid #ffd700;
+            border-radius: 5px;
+            color: #ffd700;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+            background: rgba(255, 215, 0, 0.2);
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            border: none;
+            border-radius: 5px;
+            color: #000;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2em;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+        }
+        
+        .btn-breach {
+            background: linear-gradient(45deg, #ff0000, #8B0000);
+            color: #fff;
+            margin-top: 20px;
+        }
+        
+        .btn-breach:hover {
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+        }
+        
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 5px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .info-item {
+            text-align: center;
+        }
+        
+        .info-label {
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
+        
+        .info-value {
+            font-size: 1.2em;
+            font-weight: 700;
+            margin-top: 5px;
+        }
+        
+        .timer {
+            font-size: 1.5em;
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+        }
+        
+        .sudoku-grid {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 0;
+            margin: 20px auto;
+            max-width: 450px;
+            border: 3px solid #ffd700;
+            background: #ffd700;
+        }
+        
+        .cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            border: 1px solid #444;
+            font-size: 1.5em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #9D4EDD;
+        }
+        
+        .cell:nth-child(3n):not(:nth-child(9n)) {
+            border-right: 3px solid #ffd700;
+        }
+        
+        .cell:nth-child(n+19):nth-child(-n+27),
+        .cell:nth-child(n+46):nth-child(-n+54) {
+            border-bottom: 3px solid #ffd700;
+        }
+        
+        .cell.fixed {
+            background: rgba(255, 215, 0, 0.2);
+            color: #9D4EDD;
+            cursor: default;
+        }
+        
+        .cell.selected {
+            background: rgba(0, 255, 0, 0.3);
+            box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+        
+        .cell.error {
+            background: rgba(255, 0, 0, 0.3);
+            animation: shake 0.3s;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .number-pad {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+            max-width: 450px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .number-btn {
+            padding: 15px;
+            background: rgba(255, 215, 0, 0.2);
+            border: 2px solid #ffd700;
+            border-radius: 5px;
+            color: #ffd700;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .number-btn:hover {
+            background: rgba(255, 215, 0, 0.4);
+            transform: scale(1.1);
+        }
+        
+        .victory-message {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 3px solid #ffd700;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            z-index: 1000;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.8);
+        }
+        
+        .victory-message.show {
+            display: block;
+            animation: zoomIn 0.5s;
+        }
+        
+        @keyframes zoomIn {
+            from {
+                transform: translate(-50%, -50%) scale(0);
+            }
+            to {
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+        
+        .victory-title {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px #ffd700;
+        }
+        
+        /* Estilos para Brecha */
+        .breach-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .breach-title {
+            font-size: 2em;
+            color: #ff0000;
+            text-shadow: 0 0 20px #ff0000;
+            margin-bottom: 10px;
+        }
+        
+        .breach-subtitle {
+            color: #ff6666;
+            font-size: 0.9em;
+            letter-spacing: 2px;
+        }
+        
+        .difficulty-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            background: rgba(255, 0, 0, 0.2);
+            border: 2px solid #ff0000;
+            border-radius: 5px;
+            color: #ff0000;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+        
+        .tab-btn:hover {
+            background: rgba(255, 0, 0, 0.3);
+        }
+        
+        .tab-btn.active {
+            background: linear-gradient(45deg, #ff0000, #8B0000);
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+        }
+        
+        .records-container {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        
+        .record-item {
+            background: rgba(255, 0, 0, 0.1);
+            border: 2px solid #ff0000;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        
+        .record-item:hover {
+            background: rgba(255, 0, 0, 0.2);
+            transform: translateX(5px);
+        }
+        
+        .record-rank {
+            font-size: 1.5em;
+            font-weight: 900;
+            color: #ff0000;
+            min-width: 40px;
+            text-align: center;
+        }
+        
+        .record-info {
+            flex: 1;
+            margin-left: 15px;
+        }
+        
+        .record-name {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: #ff6666;
+        }
+        
+        .record-course {
+            font-size: 0.8em;
+            color: #ff9999;
+            margin-top: 3px;
+        }
+        
+        .record-time {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+        }
+        
+        .no-records {
+            text-align: center;
+            padding: 40px;
+            color: #ff6666;
+            font-size: 1.1em;
+        }
+        
+        .records-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .records-container::-webkit-scrollbar-track {
+            background: rgba(255, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+        
+        .records-container::-webkit-scrollbar-thumb {
+            background: #ff0000;
+            border-radius: 5px;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .title {
+                font-size: 1.8em;
+            }
+            
+            .cell {
+                font-size: 1.2em;
+            }
+            
+            .number-btn {
+                padding: 10px;
+                font-size: 1em;
+            }
+            
+            .difficulty-tabs {
+                flex-direction: column;
+            }
+            
+            .record-item {
+                flex-direction: column;
+                text-align: center;
+                gap: 10px;
+            }
+            
+            .record-rank {
+                margin-bottom: 5px;
+            }
+            
+            .record-info {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="stars" id="stars"></div>
+    
+    <div class="container">
+        <h1 class="title">SUDOKU</h1>
+        
+        <div class="setup-screen active" id="setupScreen">
+            <div class="form-group">
+                <label>Tu Nombre</label>
+                <input type="text" id="playerName" placeholder="Ingresa tu nombre" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Tu Curso</label>
+                <select id="playerCourse">
+                    <option value="">Selecciona tu curso</option>
+                    <option value="8vo">8vo</option>
+                    <option value="9no">9no</option>
+                    <option value="10mo">10mo</option>
+                    <option value="1ro">1ro</option>
+                    <option value="2do">2do</option>
+                    <option value="3ro">3ro</option>
+                    <option value="Egresado">Egresado</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Dificultad</label>
+                <select id="difficulty">
+                    <option value="easy">Fácil</option>
+                    <option value="medium">Medio</option>
+                    <option value="hard">Difícil</option>
+                </select>
+            </div>
+            
+            <button class="btn" onclick="startGame()">Iniciar Misión</button>
+            <button class="btn btn-breach" onclick="showBreach()">🔴 Acceder a Brecha</button>
+        </div>
+        
+        <div class="game-screen" id="gameScreen">
+            <div class="game-info">
+                <div class="info-item">
+                    <div class="info-label">Jedi</div>
+                    <div class="info-value" id="displayName">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Curso</div>
+                    <div class="info-value" id="displayCourse">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Dificultad</div>
+                    <div class="info-value" id="displayDifficulty">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Tiempo</div>
+                    <div class="info-value timer" id="timer">00:00</div>
+                </div>
+            </div>
+            
+            <div class="sudoku-grid" id="sudokuGrid"></div>
+            
+            <div class="number-pad">
+                <button class="number-btn" onclick="selectNumber(1)">1</button>
+                <button class="number-btn" onclick="selectNumber(2)">2</button>
+                <button class="number-btn" onclick="selectNumber(3)">3</button>
+                <button class="number-btn" onclick="selectNumber(4)">4</button>
+                <button class="number-btn" onclick="selectNumber(5)">5</button>
+                <button class="number-btn" onclick="selectNumber(6)">6</button>
+                <button class="number-btn" onclick="selectNumber(7)">7</button>
+                <button class="number-btn" onclick="selectNumber(8)">8</button>
+                <button class="number-btn" onclick="selectNumber(9)">9</button>
+                <button class="number-btn" onclick="selectNumber(0)">✕</button>
+            </div>
+            
+            <button class="btn" onclick="resetGame()">Nueva Misión</button>
+        </div>
+        
+        <div class="breach-screen" id="breachScreen">
+            <div class="breach-header">
+                <div class="breach-title">⚠️ LADO OSCURO ⚠️</div>
+                <div class="breach-subtitle">Base de Datos Comprometida</div>
+            </div>
+            
+            <div class="difficulty-tabs">
+                <button class="tab-btn active" onclick="filterRecords('easy')">Fácil</button>
+                <button class="tab-btn" onclick="filterRecords('medium')">Medio</button>
+                <button class="tab-btn" onclick="filterRecords('hard')">Difícil</button>
+                <button class="tab-btn" onclick="filterRecords('all')">Todos</button>
+            </div>
+            
+            <div class="records-container" id="recordsContainer">
+                <div class="no-records">No hay registros disponibles</div>
+            </div>
+            
+            <button class="btn" onclick="backToMenu()">Volver al Menú</button>
+        </div>
+    </div>
+    
+    <div class="victory-message" id="victoryMessage">
+        <div class="victory-title">¡VICTORIA!</div>
+        <p style="font-size: 1.5em; margin: 20px 0;">Has completado tu misión, Jedi <span id="winnerName"></span></p>
+        <p style="font-size: 1.2em; color: #00ff00;">Tiempo: <span id="finalTime"></span></p>
+        <button class="btn" style="margin-top: 30px;" onclick="resetGame()">Nueva Misión</button>
+    </div>
+
+    <script>
+        // Generar estrellas
+        const starsContainer = document.getElementById('stars');
+        for (let i = 0; i < 100; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.style.left = Math.random() * 100 + '%';
+            star.style.top = Math.random() * 100 + '%';
+            star.style.animationDelay = Math.random() * 3 + 's';
+            starsContainer.appendChild(star);
+        }
+        
+        let gameBoard = [];
+        let solution = [];
+        let selectedCell = null;
+        let timerInterval = null;
+        let seconds = 0;
+        let currentDifficulty = '';
+        let currentPlayerName = '';
+        let currentPlayerCourse = '';
+        let currentFilter = 'easy';
+        
+        // Cargar registros del almacenamiento
+        function loadRecords() {
+            const records = localStorage.getItem('sudokuRecords');
+            return records ? JSON.parse(records) : [];
+        }
+        
+        // Guardar registros en el almacenamiento
+        function saveRecord(name, course, difficulty, time) {
+            const records = loadRecords();
+            records.push({
+                name: name,
+                course: course,
+                difficulty: difficulty,
+                time: time,
+                timestamp: new Date().toISOString()
+            });
+            localStorage.setItem('sudokuRecords', JSON.stringify(records));
+        }
+        
+        function isValid(board, row, col, num) {
+            for (let x = 0; x < 9; x++) {
+                if (board[row][x] === num || board[x][col] === num) {
+                    return false;
+                }
+            }
+            
+            let startRow = row - row % 3;
+            let startCol = col - col % 3;
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (board[i + startRow][j + startCol] === num) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        
+        function solveSudoku(board) {
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    if (board[row][col] === 0) {
+                        for (let num = 1; num <= 9; num++) {
+                            if (isValid(board, row, col, num)) {
+                                board[row][col] = num;
+                                if (solveSudoku(board)) {
+                                    return true;
+                                }
+                                board[row][col] = 0;
+                            }
+                        }
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        
+        function generateSudoku(difficulty) {
+            let board = Array(9).fill().map(() => Array(9).fill(0));
+            
+            for (let i = 0; i < 9; i += 3) {
+                let nums = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+                for (let row = i; row < i + 3; row++) {
+                    for (let col = i; col < i + 3; col++) {
+                        let idx = Math.floor(Math.random() * nums.length);
+                        board[row][col] = nums[idx];
+                        nums.splice(idx, 1);
+                    }
+                }
+            }
+            
+            solveSudoku(board);
+            solution = board.map(row => [...row]);
+            
+            let cellsToRemove = {
+                'easy': 40,
+                'medium': 50,
+                'hard': 60
+            }[difficulty];
+            
+            let removed = 0;
+            while (removed < cellsToRemove) {
+                let row = Math.floor(Math.random() * 9);
+                let col = Math.floor(Math.random() * 9);
+                if (board[row][col] !== 0) {
+                    board[row][col] = 0;
+                    removed++;
+                }
+            }
+            
+            return board;
+        }
+        
+        function startGame() {
+            const name = document.getElementById('playerName').value.trim();
+            const course = document.getElementById('playerCourse').value;
+            const difficulty = document.getElementById('difficulty').value;
+            
+            if (!name || !course) {
+                alert('Por favor completa todos los campos');
+                return;
+            }
+            
+            currentPlayerName = name;
+            currentPlayerCourse = course;
+            currentDifficulty = difficulty;
+            
+            document.getElementById('displayName').textContent = name;
+            document.getElementById('displayCourse').textContent = course;
+            document.getElementById('displayDifficulty').textContent = difficulty === 'easy' ? 'Fácil' : difficulty === 'medium' ? 'Medio' : 'Difícil';
+            
+            document.getElementById('setupScreen').classList.remove('active');
+            document.getElementById('gameScreen').classList.add('active');
+            
+            gameBoard = generateSudoku(difficulty);
+            renderBoard();
+            startTimer();
+        }
+        
+        function renderBoard() {
+            const grid = document.getElementById('sudokuGrid');
+            grid.innerHTML = '';
+            
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    if (gameBoard[row][col] !== 0) {
+                        cell.textContent = gameBoard[row][col];
+                        cell.classList.add('fixed');
+                    }
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.onclick = () => selectCell(row, col);
+                    grid.appendChild(cell);
+                }
+            }
+        }
+        
+        function selectCell(row, col) {
+            if (gameBoard[row][col] !== 0 && solution[row][col] === gameBoard[row][col]) {
+                return;
+            }
+            
+            document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
+            const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            cell.classList.add('selected');
+            selectedCell = { row, col };
+        }
+        
+        function selectNumber(num) {
+            if (!selectedCell) return;
+            
+            const { row, col } = selectedCell;
+            const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            
+            if (num === 0) {
+                gameBoard[row][col] = 0;
+                cell.textContent = '';
+                cell.classList.remove('error');
+            } else {
+                gameBoard[row][col] = num;
+                cell.textContent = num;
+                
+                if (num !== solution[row][col]) {
+                    cell.classList.add('error');
+                    setTimeout(() => cell.classList.remove('error'), 500);
+                } else {
+                    cell.classList.remove('error');
+                    checkWin();
+                }
+            }
+        }
+        
+        function checkWin() {
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    if (gameBoard[row][col] !== solution[row][col]) {
+                        return;
+                    }
+                }
+            }
+            
+            stopTimer();
+            const finalTime = document.getElementById('timer').textContent;
+            
+            // Guardar el registro
+            saveRecord(currentPlayerName, currentPlayerCourse, currentDifficulty, seconds);
+            
+            document.getElementById('winnerName').textContent = currentPlayerName;
+            document.getElementById('finalTime').textContent = finalTime;
+            document.getElementById('victoryMessage').classList.add('show');
+        }
+        
+        function startTimer() {
+            seconds = 0;
+            timerInterval = setInterval(() => {
+                seconds++;
+                const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const secs = (seconds % 60).toString().padStart(2, '0');
+                document.getElementById('timer').textContent = `${mins}:${secs}`;
+            }, 1000);
+        }
+        
+        function stopTimer() {
+            clearInterval(timerInterval);
+        }
+        
+        function resetGame() {
+            stopTimer();
+            document.getElementById('victoryMessage').classList.remove('show');
+            document.getElementById('setupScreen').classList.add('active');
+            document.getElementById('gameScreen').classList.remove('active');
+            document.getElementById('breachScreen').classList.remove('active');
+            selectedCell = null;
+        }
+        
+        function showBreach() {
+            document.getElementById('setupScreen').classList.remove('active');
+            document.getElementById('breachScreen').classList.add('active');
+            filterRecords('easy');
+        }
+        
+        function backToMenu() {
+            document.getElementById('breachScreen').classList.remove('active');
+            document.getElementById('setupScreen').classList.add('active');
+        }
+        
+        function filterRecords(difficulty) {
+            currentFilter = difficulty;
+            
+            // Actualizar botones activos
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            let records = loadRecords();
+            
+            // Filtrar por dificultad
+            if (difficulty !== 'all') {
+                records = records.filter(r => r.difficulty === difficulty);
+            }
+            
+            // Ordenar por tiempo (menor a mayor)
+            records.sort((a, b) => a.time - b.time);
+            
+            displayRecords(records);
+        }
+        
+        function displayRecords(records) {
+            const container = document.getElementById('recordsContainer');
+            
+            if (records.length === 0) {
+                container.innerHTML = '<div class="no-records">No hay registros disponibles</div>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            records.forEach((record, index) => {
+                const mins = Math.floor(record.time / 60).toString().padStart(2, '0');
+                const secs = (record.time % 60).toString().padStart(2, '0');
+                const timeStr = `${mins}:${secs}`;
+                
+                const difficultyText = record.difficulty === 'easy' ? 'Fácil' : 
+                                      record.difficulty === 'medium' ? 'Medio' : 'Difícil';
+                
+                const recordDiv = document.createElement('div');
+                recordDiv.className = 'record-item';
+                recordDiv.innerHTML = `
+                    <div class="record-rank">#${index + 1}</div>
+                    <div class="record-info">
+                        <div class="record-name">${record.name}</div>
+                        <div class="record-course">${record.course} - ${difficultyText}</div>
+                    </div>
+                    <div class="record-time">${timeStr}</div>
+                `;
+                container.appendChild(recordDiv);
+            });
+        }
+    </script>
+</body>
+</html>
